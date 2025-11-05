@@ -4,6 +4,14 @@
 
 OpenKitx403 is an open-source, TypeScript-first protocol that standardizes HTTP 403 as the semantic "prove you control this wallet" challenge for Solana wallet authentication.
 
+[![npm client](https://img.shields.io/npm/v/@openkitx403/client.svg)](https://www.npmjs.com/package/@openkitx403/client)
+[![npm server](https://img.shields.io/npm/v/@openkitx403/server.svg)](https://www.npmjs.com/package/@openkitx403/server)
+[![PyPI server](https://img.shields.io/pypi/v/openkitx403.svg)](https://pypi.org/project/openkitx403/)
+[![PyPI client](https://img.shields.io/pypi/v/openkitx403-client.svg)](https://pypi.org/project/openkitx403-client/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+HTTP-native wallet authentication for Solana
+
 ## ✨ Features
 
 - 🔐 **HTTP-native**: Uses standard HTTP 403 challenges
@@ -260,15 +268,13 @@ Inspired by the "HTTP-native + wallet + open" philosophy, OpenKitx403 is built f
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/openkitx403/openkitx403
-- **Documentation**: https://openkitx403.dev
-- **Discord**: https://discord.gg/openkitx403
-- **Twitter**: https://twitter.com/openkitx403
+- **GitHub**: [https://github.com/openkitx403/openkitx403](https://github.com/openkitx403/openkitx403)
+- **Documentation**: [https://openkitx403.github.io/openkitx403-docs/](https://openkitx403.github.io/openkitx403-docs/)
+- **Twitter**: [https://x.com/openkitx403](https://x.com/openkitx403)
 
 ## 💬 Support
 
 - 📧 Email: support@openkitx403.dev
-- 💬 Discord: [Join our community](https://discord.gg/openkitx403)
 - 🐛 Issues: [GitHub Issues](https://github.com/openkitx403/openkitx403/issues)
 
 ---
