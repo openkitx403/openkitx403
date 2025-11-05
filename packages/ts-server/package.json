@@ -1,0 +1,60 @@
+{
+  "name": "@openkitx403/server",
+  "version": "0.1.0",
+  "description": "TypeScript server SDK for OpenKitx403 wallet authentication",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "solana",
+    "wallet",
+    "authentication",
+    "express",
+    "fastify",
+    "middleware",
+    "web3"
+  ],
+  "author": "OpenKitx403 <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/youropenkitx403/openkitx403.git",
+    "directory": "packages/ts-server"
+  },
+  "bugs": {
+    "url": "https://github.com/youropenkitx403/openkitx403/issues"
+  },
+  "homepage": "https://github.com/youropenkitx403/openkitx403#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.87.0"
+  },
+  "peerDependencies": {
+    "express": "^4.18.0",
+    "fastify": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@noble/ed25519": "^3.0.0",
+    "@types/express": "^4.17.21",
+    "typescript": "^5.3.3"
+  }
+}

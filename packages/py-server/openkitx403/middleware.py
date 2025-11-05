@@ -1,0 +1,194 @@
+"""OpenKitx403 FastAPI Middleware"""
+from typing import Optional, Callable, Dict, Any
+from fastapi import Request, Response, status
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
+
+from .core import (
+    create_challenge,
+    verify_authorization,
+    ReplayStore,
+    InMemoryReplayStore,
+    VerifyResult
+)
+
+
+class OpenKit403Config:
+    """Configuration for OpenKit403 middleware"""
+    
+    def __init__(
+        self,
+        audience: str,
+        issuer: str,
+        ttl_seconds: int = 60,
+        clock_skew_seconds: int = 120,
+        bind_method_path: bool = False,
+        origin_binding: bool = False,
+        ua_binding: bool = False,
+        replay_store: Optional[ReplayStore] = None,
+        token_gate: Optional[Callable[[str], bool]] = None
+    ):
+        self.audience = audience
+        self.issuer = issuer
+        self.ttl_seconds = ttl_seconds
+        self.clock_skew_seconds = clock_skew_seconds
+        self.bind_method_path = bind_method_path
+        self.origin_binding = origin_binding
+        self.ua_binding = ua_binding
+        self.replay_store = replay_store or InMemoryReplayStore()
+        self.token_gate = token_gate
+
+
+class OpenKit403Middleware(BaseHTTPMiddleware):
+    """FastAPI middleware for OpenKit403 authentication"""
+    
+    def __init__(
+        self,
+        app: ASGIApp,
+        audience: str,
+        issuer: str,
+        ttl_seconds: int = 60,
+        clock_skew_seconds: int = 120,
+        bind_method_path: bool = False,
+        origin_binding: bool = False,
+        ua_binding: bool = False,
+        replay_backend: str = "memory",
+        token_gate: Optional[Callable[[str], bool]] = None,
+        excluded_paths: Optional[list[str]] = None
+    ):
+        super().__init__(app)
+        
+        # Setup replay store
+        if replay_backend == "memory":
+            replay_store = InMemoryReplayStore()
+        else:
+            replay_store = None  # User must provide custom store
+        
+        self.config = OpenKit403Config(
+            audience=audience,
+            issuer=issuer,
+            ttl_seconds=ttl_seconds,
+            clock_skew_seconds=clock_skew_seconds,
+            bind_method_path=bind_method_path,
+            origin_binding=origin_binding,
+            ua_binding=ua_binding,
+            replay_store=replay_store,
+            token_gate=token_gate
+        )
+        
+        self.excluded_paths = excluded_paths or []
+    
+    async def dispatch(self, request: Request, call_next):
+        """Process request through OpenKit403 authentication"""
+        
+        # Skip excluded paths
+        if request.url.path in self.excluded_paths:
+            return await call_next(request)
+        
+        auth_header = request.headers.get('authorization')
+        
+        if not auth_header:
+            # No auth header - send challenge
+            header_value, _ = create_challenge(
+                method=request.method,
+                path=request.url.path,
+                audience=self.config.audience,
+                issuer=self.config.issuer,
+                ttl_seconds=self.config.ttl_seconds,
+                ua_binding=self.config.ua_binding,
+                origin_binding=self.config.origin_binding
+            )
+            
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "error": "wallet_auth_required",
+                    "detail": "Sign the challenge using your Solana wallet and resend the request."
+                },
+                headers={"WWW-Authenticate": header_value}
+            )
+        
+        # Verify authorization
+        result = await verify_authorization(
+            auth_header=auth_header,
+            method=request.method,
+            path=request.url.path,
+            audience=self.config.audience,
+            issuer=self.config.issuer,
+            ttl_seconds=self.config.ttl_seconds,
+            clock_skew_seconds=self.config.clock_skew_seconds,
+            bind_method_path=self.config.bind_method_path,
+            origin_binding=self.config.origin_binding,
+            ua_binding=self.config.ua_binding,
+            replay_store=self.config.replay_store,
+            token_gate=self.config.token_gate,
+            headers=dict(request.headers)
+        )
+        
+        if not result.ok:
+            # Invalid auth - send new challenge
+            header_value, _ = create_challenge(
+                method=request.method,
+                path=request.url.path,
+                audience=self.config.audience,
+                issuer=self.config.issuer,
+                ttl_seconds=self.config.ttl_seconds,
+                ua_binding=self.config.ua_binding,
+                origin_binding=self.config.origin_binding
+            )
+            
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "error": result.error,
+                    "detail": "Authentication failed. Please sign the new challenge."
+                },
+                headers={"WWW-Authenticate": header_value}
+            )
+        
+        # Success - attach user to request state
+        request.state.openkitx403_user = {
+            "address": result.address,
+            "challenge": result.challenge
+        }
+        
+        response = await call_next(request)
+        return response
+
+
+class OpenKit403User:
+    """User information from OpenKit403 authentication"""
+    
+    def __init__(self, address: str, challenge: Optional[Dict[str, Any]] = None):
+        self.address = address
+        self.challenge = challenge
+
+
+def require_openkitx403_user(request: Request) -> OpenKit403User:
+    """
+    Dependency to extract OpenKit403 user from request
+    
+    Usage:
+        @app.get("/protected")
+        async def protected(user: OpenKit403User = Depends(require_openkitx403_user)):
+            return {"address": user.address}
+    """
+    user_data = getattr(request.state, "openkitx403_user", None)
+    
+    if not user_data:
+        # This should not happen if middleware is properly configured
+        raise RuntimeError("OpenKit403 user not found in request state")
+    
+    return OpenKit403User(
+        address=user_data["address"],
+        challenge=user_data.get("challenge")
+    )
+
+
+__all__ = [
+    'OpenKit403Config',
+    'OpenKit403Middleware',
+    'OpenKit403User',
+    'require_openkitx403_user'
+]

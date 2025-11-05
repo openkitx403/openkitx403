@@ -1,0 +1,49 @@
+{
+  "name": "@openkitx403/client",
+  "version": "0.1.0",
+  "description": "TypeScript client SDK for OpenKitx403 wallet authentication",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "solana",
+    "wallet",
+    "authentication",
+    "web3",
+    "phantom",
+    "backpack",
+    "solflare"
+  ],
+  "author": "OpenKitx403 openkitx403@outlook.com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openkitx403/openkitx403.git",
+    "directory": "packages/ts-client"
+  },
+  "bugs": {
+    "url": "https://github.com/openkitx403/openkitx403/issues"
+  },
+  "homepage": "https://github.com/openkitx403/openkitx403#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.87.0",
+    "bs58": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.4",
+    "@types/node": "^20.19.24",
+    "typescript": "^5.9.3"
+  }
+}
