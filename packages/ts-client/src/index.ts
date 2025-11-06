@@ -11,14 +11,6 @@ export interface AuthOptions {
   body?: any;
 }
 
-export interface AuthResult {
-  ok: boolean;
-  address?: string;
-  challenge?: string;
-  response?: Response;
-  error?: string;
-}
-
 export interface Challenge {
   v: number;
   alg: string;
@@ -69,7 +61,6 @@ function generateNonce(): string {
   if (typeof window !== 'undefined' && window.crypto) {
     window.crypto.getRandomValues(array);
   } else {
-    // Node.js environment
     const crypto = require('crypto');
     crypto.randomFillSync(array);
   }
@@ -89,7 +80,6 @@ function buildSigningString(challenge: Challenge): string {
     '',
     `payload: ${JSON.stringify(challenge, Object.keys(challenge).sort())}`
   ];
-  
   return lines.join('\n');
 }
 
@@ -144,7 +134,7 @@ export class OpenKit403Client {
     this.wallet = provider;
   }
 
-  async signChallenge(challengeB64: string): Promise<{ signature: string; address: string }> {
+  private async signChallenge(challengeB64: string): Promise<{ signature: string; address: string }> {
     if (!this.walletInstance) {
       throw new Error('Wallet not connected. Call connect() first.');
     }
@@ -163,14 +153,14 @@ export class OpenKit403Client {
     }
 
     const { signature } = await this.walletInstance.signMessage(message, 'utf8');
-    
+
     return {
       signature: bs58.encode(signature),
       address: this.walletInstance.publicKey.toBase58()
     };
   }
 
-  async authenticate(options: AuthOptions): Promise<AuthResult> {
+  async authenticate(options: AuthOptions): Promise<Response> {
     const method = options.method || 'GET';
     const headers = { ...options.headers };
 
@@ -181,60 +171,39 @@ export class OpenKit403Client {
       body: options.body ? JSON.stringify(options.body) : undefined
     });
 
-    // If not 403 or no challenge, return as-is
+    // If not 403, return as-is
     if (response1.status !== 403) {
-      return {
-        ok: response1.ok,
-        response: response1,
-        error: response1.ok ? undefined : `HTTP ${response1.status}`
-      };
+      return response1;
     }
 
     const wwwAuth = response1.headers.get('WWW-Authenticate');
     if (!wwwAuth || !wwwAuth.startsWith('OpenKitx403')) {
-      return {
-        ok: false,
-        response: response1,
-        error: 'No OpenKitx403 challenge found'
-      };
+      return response1;
     }
 
     const parsed = parseWWWAuthenticate(wwwAuth);
     if (!parsed) {
-      return {
-        ok: false,
-        error: 'Failed to parse challenge'
-      };
+      throw new Error('Failed to parse challenge');
     }
 
     // Connect wallet if needed
     if (!this.walletInstance) {
-      try {
-        await this.connect(options.wallet);
-      } catch (err) {
-        return {
-          ok: false,
-          error: `Wallet connection failed: ${err}`
-        };
-      }
+      await this.connect(options.wallet);
     }
 
     // Sign challenge
-    let signed;
-    try {
-      signed = await this.signChallenge(parsed.challenge);
-    } catch (err) {
-      return {
-        ok: false,
-        error: `Signature failed: ${err}`
-      };
-    }
+    const signed = await this.signChallenge(parsed.challenge);
 
-    // Build Authorization header
-    const url = new URL(options.resource);
+    // ✅ FIXED: Use challenge's path for bind, not URL path
+    // This ensures compatibility with Express routers that strip prefixes
+    const challengeJson = base64urlDecode(parsed.challenge);
+    const challenge: Challenge = JSON.parse(challengeJson);
+
     const nonce = generateNonce();
     const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    const bind = `${method}:${url.pathname}`;
+
+    // Use challenge's method and path directly
+    const bind = `${challenge.method}:${challenge.path}`;
 
     const authHeader = `OpenKitx403 addr="${signed.address}", sig="${signed.signature}", challenge="${parsed.challenge}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
 
@@ -248,17 +217,21 @@ export class OpenKit403Client {
       body: options.body ? JSON.stringify(options.body) : undefined
     });
 
-    return {
-      ok: response2.ok,
-      address: signed.address,
-      challenge: parsed.challenge,
-      response: response2,
-      error: response2.ok ? undefined : `Authentication failed: HTTP ${response2.status}`
-    };
+    return response2;
+  }
+
+  getAddress(): string {
+    return this.walletInstance?.publicKey?.toBase58() || '';
+  }
+
+  disconnect(): void {
+    if (this.walletInstance && (this.walletInstance as any).disconnect) {
+      (this.walletInstance as any).disconnect();
+    }
+    this.walletInstance = undefined;
   }
 }
 
-// Standalone helper functions
 export async function detectWallets(): Promise<WalletProvider[]> {
   if (typeof window === 'undefined') {
     return [];
@@ -268,7 +241,7 @@ export async function detectWallets(): Promise<WalletProvider[]> {
   if (window.phantom?.solana || window.solana) wallets.push('phantom');
   if (window.backpack) wallets.push('backpack');
   if (window.solflare) wallets.push('solflare');
-  
+
   return wallets;
 }
 
