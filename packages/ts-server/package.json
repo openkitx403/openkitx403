@@ -1,12 +1,12 @@
 {
   "name": "@openkitx403/server",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "TypeScript server SDK for OpenKitx403 wallet authentication",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "files": [
     "dist",
+    "src",
     "README.md",
     "LICENSE"
   ],
@@ -22,8 +22,7 @@
     "fastify",
     "middleware",
     "web3",
-    "http-403",
-    "challenge-response"
+    "http-403"
   ],
   "author": "OpenKitx403 Contributors",
   "license": "MIT",
@@ -32,10 +31,6 @@
     "url": "https://github.com/openkitx403/openkitx403.git",
     "directory": "packages/server"
   },
-  "bugs": {
-    "url": "https://github.com/openkitx403/openkitx403/issues"
-  },
-  "homepage": "https://github.com/openkitx403/openkitx403#readme",
   "publishConfig": {
     "access": "public"
   },
