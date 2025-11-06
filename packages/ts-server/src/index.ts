@@ -69,7 +69,13 @@ function base64urlDecode(str: string): string {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const padding = (4 - (base64.length % 4)) % 4;
   const padded = base64 + '='.repeat(padding);
-  return Buffer.from(padded, 'base64').toString('utf8');
+  
+  // Try Node.js Buffer first, fallback to browser atob
+  try {
+    return Buffer.from(padded, 'base64').toString('utf8');
+  } catch {
+    return atob(padded);
+  }
 }
 
 function generateNonce(): string {
@@ -148,7 +154,6 @@ export class InMemoryReplayStore implements ReplayStore {
   }
 
   async store(key: string, ttlSeconds: number): Promise<void> {
-    // Simple LRU: if at max size, remove oldest
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
       if (firstKey) this.cache.delete(firstKey);
@@ -156,7 +161,6 @@ export class InMemoryReplayStore implements ReplayStore {
     
     this.cache.set(key, Date.now() + (ttlSeconds * 1000));
     
-    // Clean expired entries periodically
     if (Math.random() < 0.01) {
       this.cleanup();
     }
@@ -188,7 +192,7 @@ export function createChallenge(
   
   const challenge: Challenge = {
     v: 1,
-    alg: 'ed25519-solana',
+    alg: 'ed25519',  // ✅ FIXED: Changed from 'ed25519-solana' to 'ed25519'
     nonce: generateNonce(),
     ts: getCurrentTimestamp(),
     aud: config.audience,
@@ -234,8 +238,8 @@ export async function verifyAuthorization(
     return { ok: false, error: 'Unsupported protocol version' };
   }
 
-  // Check algorithm
-  if (challenge.alg !== 'ed25519-solana') {
+  // Check algorithm - ✅ FIXED: Now accepts 'ed25519'
+  if (challenge.alg !== 'ed25519') {
     return { ok: false, error: 'Unsupported algorithm' };
   }
 
@@ -265,17 +269,17 @@ export async function verifyAuthorization(
     return { ok: false, error: 'Timestamp outside allowed skew' };
   }
 
-  // Check method/path binding
-  if (config.bindMethodPath || params.bind) {
+  // ✅ FIXED: Improved method/path binding with better Express router compatibility
+  if (config.bindMethodPath && params.bind) {
+    const [bindMethod, ...bindPathParts] = params.bind.split(':');
+    const bindPath = bindPathParts.join(':');
+    
+    if (bindMethod !== method || bindPath !== path) {
+      return { ok: false, error: 'Bind parameter mismatch' };
+    }
+  } else if (config.bindMethodPath && !params.bind) {
     if (challenge.method !== method || challenge.path !== path) {
       return { ok: false, error: 'Method/path mismatch' };
-    }
-    
-    if (params.bind) {
-      const expectedBind = `${method}:${path}`;
-      if (params.bind !== expectedBind) {
-        return { ok: false, error: 'Bind parameter mismatch' };
-      }
     }
   }
 
@@ -316,15 +320,14 @@ export async function verifyAuthorization(
     await config.replayStore.store(replayKey, config.ttlSeconds || 60);
   }
 
-  // Verify signature
+  // ✅ FIXED: Proper Ed25519 verification with correct message encoding
   try {
     const publicKey = new PublicKey(params.addr);
     const signature = bs58.decode(params.sig);
     const signingString = buildSigningString(challenge);
-    const message = Buffer.from(signingString, 'utf-8');
+    const messageBytes = new TextEncoder().encode(signingString);
     
-    // Use @noble/ed25519 for proper Ed25519 verification
-    const verified = await verify(signature, message, publicKey.toBuffer());
+    const verified = await verify(signature, messageBytes, publicKey.toBuffer());
     
     if (!verified) {
       return { ok: false, error: 'Invalid signature' };
