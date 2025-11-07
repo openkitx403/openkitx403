@@ -7,15 +7,18 @@ from datetime import datetime
 from typing import Dict, Optional, Any
 from urllib.parse import urlparse
 
+
 import requests
 import base58
-from solana.keypair import Keypair
+from solders.keypair import Keypair
 from nacl.signing import SigningKey
+
 
 
 class OpenKit403ClientError(Exception):
     """Base exception for OpenKit403 client errors"""
     pass
+
 
 
 class OpenKit403Client:
@@ -26,7 +29,7 @@ class OpenKit403Client:
     that need to authenticate with OpenKitx403-protected APIs using a Solana keypair.
     
     Example:
-        from solana.keypair import Keypair
+        from solders.keypair import Keypair
         from openkitx403_client import OpenKit403Client
         
         keypair = Keypair.generate()
@@ -44,7 +47,7 @@ class OpenKit403Client:
             keypair: Solana keypair for signing challenges
         """
         self.keypair = keypair
-        self.address = str(keypair.public_key)
+        self.address = str(keypair.pubkey())
     
     def authenticate(
         self,
@@ -153,7 +156,7 @@ class OpenKit403Client:
         
         # Sign with keypair
         message = signing_string.encode('utf-8')
-        signing_key = SigningKey(bytes(self.keypair.secret_key[:32]))
+        signing_key = SigningKey(bytes(self.keypair.secret()))
         signed = signing_key.sign(message)
         
         # Return base58-encoded signature
@@ -217,6 +220,7 @@ class OpenKit403Client:
         return decoded.decode('utf-8')
 
 
+
 def create_client(keypair: Keypair) -> OpenKit403Client:
     """
     Factory function to create an OpenKit403Client.
@@ -228,6 +232,7 @@ def create_client(keypair: Keypair) -> OpenKit403Client:
         Configured OpenKit403Client instance
     """
     return OpenKit403Client(keypair)
+
 
 
 __all__ = [
