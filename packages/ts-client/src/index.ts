@@ -42,10 +42,13 @@ declare global {
   }
 }
 
-function base64urlEncode(data: string | Buffer): string {
-  const base64 = Buffer.isBuffer(data)
-    ? data.toString('base64')
-    : Buffer.from(data).toString('base64');
+function base64urlEncode(data: string | Uint8Array): string {
+  let binary = '';
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
@@ -53,18 +56,18 @@ function base64urlDecode(str: string): string {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const padding = (4 - (base64.length % 4)) % 4;
   const padded = base64 + '='.repeat(padding);
-  return Buffer.from(padded, 'base64').toString('utf8');
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 function generateNonce(): string {
   const array = new Uint8Array(16);
-  if (typeof window !== 'undefined' && window.crypto) {
-    window.crypto.getRandomValues(array);
-  } else {
-    const crypto = require('crypto');
-    crypto.randomFillSync(array);
-  }
-  return Buffer.from(array).toString('base64url');
+  crypto.getRandomValues(array);
+  return base64urlEncode(array);
 }
 
 function buildSigningString(challenge: Challenge): string {
@@ -164,14 +167,12 @@ export class OpenKit403Client {
     const method = options.method || 'GET';
     const headers = { ...options.headers };
 
-    // Make initial request
     const response1 = await fetch(options.resource, {
       method,
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined
     });
 
-    // If not 403, return as-is
     if (response1.status !== 403) {
       return response1;
     }
@@ -186,28 +187,21 @@ export class OpenKit403Client {
       throw new Error('Failed to parse challenge');
     }
 
-    // Connect wallet if needed
     if (!this.walletInstance) {
       await this.connect(options.wallet);
     }
 
-    // Sign challenge
     const signed = await this.signChallenge(parsed.challenge);
 
-    // ✅ FIXED: Use challenge's path for bind, not URL path
-    // This ensures compatibility with Express routers that strip prefixes
     const challengeJson = base64urlDecode(parsed.challenge);
     const challenge: Challenge = JSON.parse(challengeJson);
 
     const nonce = generateNonce();
     const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-
-    // Use challenge's method and path directly
     const bind = `${challenge.method}:${challenge.path}`;
 
     const authHeader = `OpenKitx403 addr="${signed.address}", sig="${signed.signature}", challenge="${parsed.challenge}", ts="${ts}", nonce="${nonce}", bind="${bind}"`;
 
-    // Retry request with auth
     const response2 = await fetch(options.resource, {
       method,
       headers: {
