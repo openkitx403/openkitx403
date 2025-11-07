@@ -1,7 +1,15 @@
 import { PublicKey } from '@solana/web3.js';
-import { verify } from '@noble/ed25519';
+import * as ed25519 from '@noble/ed25519';
 import bs58 from 'bs58';
-import * as crypto from 'crypto';
+import { createHash, randomBytes } from 'crypto';
+
+ed25519.etc.sha512Sync = (...messages) => {
+  const hash = createHash('sha512');
+  for (const message of messages) {
+    hash.update(message);
+  }
+  return Uint8Array.from(hash.digest());
+};
 
 // Types
 export interface OpenKit403Config {
@@ -69,17 +77,11 @@ function base64urlDecode(str: string): string {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const padding = (4 - (base64.length % 4)) % 4;
   const padded = base64 + '='.repeat(padding);
-  
-  // Try Node.js Buffer first, fallback to browser atob
-  try {
-    return Buffer.from(padded, 'base64').toString('utf8');
-  } catch {
-    return atob(padded);
-  }
+  return Buffer.from(padded, 'base64').toString('utf8');
 }
 
 function generateNonce(): string {
-  return crypto.randomBytes(16).toString('base64url');
+  return randomBytes(16).toString('base64url');
 }
 
 function getCurrentTimestamp(): string {
@@ -192,7 +194,7 @@ export function createChallenge(
   
   const challenge: Challenge = {
     v: 1,
-    alg: 'ed25519',  // ✅ FIXED: Changed from 'ed25519-solana' to 'ed25519'
+    alg: 'ed25519',
     nonce: generateNonce(),
     ts: getCurrentTimestamp(),
     aud: config.audience,
@@ -218,13 +220,11 @@ export async function verifyAuthorization(
   config: OpenKit403Config,
   headers?: Record<string, string>
 ): Promise<VerifyResult> {
-  // Parse authorization header
   const params = parseAuthorizationHeader(authHeader);
   if (!params) {
     return { ok: false, error: 'Invalid authorization header' };
   }
 
-  // Decode and validate challenge
   let challenge: Challenge;
   try {
     const challengeJson = base64urlDecode(params.challenge);
@@ -233,33 +233,27 @@ export async function verifyAuthorization(
     return { ok: false, error: 'Invalid challenge format' };
   }
 
-  // Check protocol version
   if (challenge.v !== 1) {
     return { ok: false, error: 'Unsupported protocol version' };
   }
 
-  // Check algorithm - ✅ FIXED: Now accepts 'ed25519'
   if (challenge.alg !== 'ed25519') {
     return { ok: false, error: 'Unsupported algorithm' };
   }
 
-  // Check challenge expiration
   const expiry = new Date(challenge.exp);
   if (new Date() > expiry) {
     return { ok: false, error: 'Challenge expired' };
   }
 
-  // Check audience
   if (challenge.aud !== config.audience) {
     return { ok: false, error: 'Invalid audience' };
   }
 
-  // Check server ID
   if (challenge.serverId !== config.issuer) {
     return { ok: false, error: 'Invalid server ID' };
   }
 
-  // Check timestamp within clock skew
   const clientTs = new Date(params.ts);
   const now = new Date();
   const skew = config.clockSkewSeconds || 120;
@@ -269,7 +263,6 @@ export async function verifyAuthorization(
     return { ok: false, error: 'Timestamp outside allowed skew' };
   }
 
-  // ✅ FIXED: Improved method/path binding with better Express router compatibility
   if (config.bindMethodPath && params.bind) {
     const [bindMethod, ...bindPathParts] = params.bind.split(':');
     const bindPath = bindPathParts.join(':');
@@ -277,13 +270,8 @@ export async function verifyAuthorization(
     if (bindMethod !== method || bindPath !== path) {
       return { ok: false, error: 'Bind parameter mismatch' };
     }
-  } else if (config.bindMethodPath && !params.bind) {
-    if (challenge.method !== method || challenge.path !== path) {
-      return { ok: false, error: 'Method/path mismatch' };
-    }
   }
 
-  // Check origin binding
   if (challenge.originBind && headers) {
     const origin = headers['origin'] || headers['referer'];
     if (!origin) {
@@ -301,14 +289,12 @@ export async function verifyAuthorization(
     }
   }
 
-  // Check UA binding
   if (challenge.uaBind && headers) {
     if (!headers['user-agent']) {
       return { ok: false, error: 'User-Agent binding required but not provided' };
     }
   }
 
-  // Check replay
   if (config.replayStore) {
     const replayKey = `${params.addr}:${params.nonce}`;
     const isReplay = await config.replayStore.check(replayKey, config.ttlSeconds || 60);
@@ -320,14 +306,14 @@ export async function verifyAuthorization(
     await config.replayStore.store(replayKey, config.ttlSeconds || 60);
   }
 
-  // ✅ FIXED: Proper Ed25519 verification with correct message encoding
+  // ✅ FIXED: Proper Ed25519 verification
   try {
     const publicKey = new PublicKey(params.addr);
     const signature = bs58.decode(params.sig);
     const signingString = buildSigningString(challenge);
     const messageBytes = new TextEncoder().encode(signingString);
     
-    const verified = await verify(signature, messageBytes, publicKey.toBuffer());
+    const verified = await ed25519.verify(signature, messageBytes, publicKey.toBuffer());
     
     if (!verified) {
       return { ok: false, error: 'Invalid signature' };
@@ -337,7 +323,6 @@ export async function verifyAuthorization(
     return { ok: false, error: `Signature verification failed: ${err.message}` };
   }
 
-  // Check token gate if configured
   if (config.tokenGate) {
     try {
       const allowed = await config.tokenGate(params.addr);
