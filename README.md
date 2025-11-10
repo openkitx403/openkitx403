@@ -1,6 +1,6 @@
 # OpenKitx403
 
-**HTTP-native wallet authentication protocol for Solana**
+**HTTP-native wallet authentication protocol for Solana.**
 
 OpenKitx403 is an open-source, TypeScript-first protocol that standardizes HTTP 403 as the semantic "prove you control this wallet" challenge for Solana wallet authentication.
 
