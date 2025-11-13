@@ -1,11 +1,13 @@
 [tool.poetry]
 name = "openkitx403-client"
-version = "0.1.1"
+version = "0.1.3"
 description = "Python client SDK for OpenKitx403 wallet authentication"
 authors = ["OpenKitx403 Contributors <team@openkitx403.dev>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/openkitx403/openkitx403-python-client"
+homepage = "https://www.openkitx403.dev"
+repository = "https://github.com/openkitx403/openkitx403"
+documentation = "https://openkitx403.github.io/openkitx403-docs"
 
 [tool.poetry.dependencies]
 python = "^3.8"
