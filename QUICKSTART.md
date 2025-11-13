@@ -1,27 +1,34 @@
-# OpenKitx403 - Quick Start Guide
+# OpenKitx403 — Quick Start Guide
 
-Get started with OpenKitx403 in 5 minutes!
+Get up and running with **OpenKitx403** in 5 minutes.
 
-## 1. Install Packages
+---
 
-### Client (Browser)
+## 1. Install
+
+### Browser Client
 ```bash
 npm install @openkitx403/client
-```
+````
 
-### Server (Node.js)
+### Node.js Server
+
 ```bash
 npm install @openkitx403/server
 ```
 
-### Server (Python)
+### Python Server
+
 ```bash
 pip install openkitx403
 ```
 
-## 2. Setup Server
+---
+
+## 2. Server Setup
 
 ### Express (TypeScript)
+
 ```typescript
 import express from 'express';
 import { createOpenKit403, inMemoryLRU } from '@openkitx403/server';
@@ -31,7 +38,7 @@ const app = express();
 const openkit = createOpenKit403({
   issuer: 'my-api',
   audience: 'https://api.example.com',
-  replayStore: inMemoryLRU()
+  replayStore: inMemoryLRU(),
 });
 
 app.use(openkit.middleware());
@@ -40,10 +47,11 @@ app.get('/protected', (req, res) => {
   res.json({ wallet: req.openkitx403User.address });
 });
 
-app.listen(3000);
+app.listen(3000, () => console.log('→ Server running at http://localhost:3000'));
 ```
 
 ### FastAPI (Python)
+
 ```python
 from fastapi import FastAPI, Depends
 from openkitx403 import OpenKit403Middleware, require_openkitx403_user
@@ -54,60 +62,73 @@ app.add_middleware(
     OpenKit403Middleware,
     audience="https://api.example.com",
     issuer="my-api",
-    replay_backend="memory"
+    replay_backend="memory",
 )
 
 @app.get("/protected")
-async def protected(user = Depends(require_openkitx403_user)):
+async def protected(user=Depends(require_openkitx403_user)):
     return {"wallet": user.address}
 ```
 
-## 3. Setup Client
+---
+
+## 3. Client Setup
+
+### Browser Example
 
 ```typescript
 import { OpenKit403Client } from '@openkitx403/client';
 
 const client = new OpenKit403Client();
 
-// Connect wallet
+// Connect a Solana wallet (Phantom)
 await client.connect('phantom');
 
-// Authenticate
+// Authenticate against protected API
 const result = await client.authenticate({
-  resource: 'https://api.example.com/protected'
+  resource: 'https://api.example.com/protected',
 });
 
 if (result.ok) {
-  console.log('Success!', result.address);
+  console.log('✅ Authenticated:', result.address);
+} else {
+  console.error('❌ Authentication failed:', result.error);
 }
 ```
 
-## 4. Run Example
+---
+
+## 4. Run Example Project
 
 ```bash
-# Clone repo
+# Clone repository
 git clone https://github.com/openkitx403/openkitx403
 cd openkitx403
 
 # Install dependencies
 npm install
 
-# Build packages
+# Build all packages
 npm run build
 
-# Run API demo
+# Run demo API
 cd packages/examples/api-demo
 npm run dev
 ```
 
+---
+
 ## Next Steps
 
-- Read [USAGE_EXAMPLES.md](./USAGE_EXAMPLES.md) for all use cases
-- Check [docs/COMPLETE_SPECIFICATION.md](./docs/COMPLETE_SPECIFICATION.md) for protocol details
-- Review [SECURITY.md](./SECURITY.md) for best practices
+* 📘 Explore [USAGE_EXAMPLES.md](./USAGE_EXAMPLES.md) for detailed scenarios
+* 🔍 Review [docs/COMPLETE_SPECIFICATION.md](./docs/COMPLETE_SPECIFICATION.md) for protocol details
+* 🛡️ See [SECURITY.md](./SECURITY.md) for recommended best practices
+
+---
 
 ## Need Help?
 
-- 📖 Documentation: https://openkitx403.dev
-- 💬 Discord: https://discord.gg/openkitx403
-- 🐛 Issues: https://github.com/openkitx403/openkitx403/issues
+* **Docs:** [openkitx403.dev](https://openkitx403.dev)
+* **Issues:** [GitHub Issues](https://github.com/openkitx403/openkitx403/issues)
+
+```
