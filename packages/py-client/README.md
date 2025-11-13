@@ -1,24 +1,80 @@
-# openkitx403-client (Python)
+# openkitx403-client — Python SDK
 
-Python client SDK for OpenKitx403 wallet authentication.
+Lightweight **Python client** for authenticating with **OpenKitx403**-protected APIs using Solana wallets.
 
-## Installation
+---
 
-\`\`\`bash
+## 🚀 Installation
+
+```bash
 pip install openkitx403-client
-\`\`\`
+# or
+poetry add openkitx403-client
+```
 
-## Usage
+---
 
-\`\`\`python
-from solana.keypair import Keypair
+## ⚡ Quick Start
+
+```python
+import asyncio
+from nacl.signing import SigningKey
+import base58
 from openkitx403_client import OpenKit403Client
 
-keypair = Keypair.generate()
-client = OpenKit403Client(keypair)
 
-response = client.authenticate('https://api.example.com/protected')
-print(response.json())
-\`\`\`
+async def main():
+    # Generate or load signing key (use secure storage in production)
+    signing_key = SigningKey.generate()
+    public_key = base58.b58encode(bytes(signing_key.verify_key)).decode()
+    print(f"Wallet address: {public_key}")
 
-See USAGE_EXAMPLES.md for complete examples.
+    # Initialize client
+    async with OpenKit403Client(signing_key) as client:
+        # Authenticate against protected API
+        result = await client.authenticate(
+            resource="https://api.example.com/protected",
+            method="GET",
+        )
+
+        if result.ok and result.response:
+            data = await result.response.json()
+            print("✅ Authenticated:", data)
+        else:
+            print("❌ Authentication failed:", result.error)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+## 🧩 API Overview
+
+### `OpenKit403Client(signing_key: SigningKey)`
+
+Authenticate any Python-based agent or service using a Solana wallet key.
+
+**Key Methods:**
+
+| Method                                                          | Description                             |
+| --------------------------------------------------------------- | --------------------------------------- |
+| `authenticate(resource, method='GET', headers=None, body=None)` | Authenticates and executes a request    |
+| `create_challenge(resource, method)`                            | Returns the authentication challenge    |
+| `sign_challenge(challenge)`                                     | Signs the challenge with the wallet key |
+
+---
+
+## 📚 Documentation
+
+* [**Usage Examples → Python Client**](../../USAGE_EXAMPLES.md#4-python-client)
+* [**Protocol Specification**](../../docs/SPEC.md)
+* [**Security Guide**](../../SECURITY.md)
+
+---
+
+## 🪪 License
+
+[MIT](../../LICENSE)
+
