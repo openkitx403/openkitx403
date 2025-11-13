@@ -27,7 +27,8 @@ class OpenKit403Config:
         origin_binding: bool = False,
         ua_binding: bool = False,
         replay_store: Optional[ReplayStore] = None,
-        token_gate: Optional[Callable[[str], bool]] = None
+        token_gate: Optional[Callable[[str], bool]] = None,
+        allowed_origins: Optional[list[str]] = None  
     ):
         self.audience = audience
         self.issuer = issuer
@@ -38,6 +39,7 @@ class OpenKit403Config:
         self.ua_binding = ua_binding
         self.replay_store = replay_store or InMemoryReplayStore()
         self.token_gate = token_gate
+        self.allowed_origins = allowed_origins or ["*"] 
 
 
 class OpenKit403Middleware(BaseHTTPMiddleware):
@@ -55,7 +57,8 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
         ua_binding: bool = False,
         replay_backend: str = "memory",
         token_gate: Optional[Callable[[str], bool]] = None,
-        excluded_paths: Optional[list[str]] = None
+        excluded_paths: Optional[list[str]] = None,
+        allowed_origins: Optional[list[str]] = None 
     ):
         super().__init__(app)
         
@@ -63,7 +66,7 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
         if replay_backend == "memory":
             replay_store = InMemoryReplayStore()
         else:
-            replay_store = None  # User must provide custom store
+            replay_store = None
         
         self.config = OpenKit403Config(
             audience=audience,
@@ -74,16 +77,43 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
             origin_binding=origin_binding,
             ua_binding=ua_binding,
             replay_store=replay_store,
-            token_gate=token_gate
+            token_gate=token_gate,
+            allowed_origins=allowed_origins 
         )
         
         self.excluded_paths = excluded_paths or []
+    
+    def _add_cors_headers(self, response: JSONResponse, request: Request) -> JSONResponse:
+        """Add CORS headers to response"""
+        origin = request.headers.get('origin')
+        
+        # Check if origin is allowed
+        if origin and (
+            "*" in self.config.allowed_origins or 
+            origin in self.config.allowed_origins
+        ):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, User-Agent"
+            response.headers["Access-Control-Expose-Headers"] = "WWW-Authenticate, Authorization"
+        elif "*" in self.config.allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, Origin, User-Agent"
+            response.headers["Access-Control-Expose-Headers"] = "WWW-Authenticate, Authorization"
+        
+        return response
     
     async def dispatch(self, request: Request, call_next):
         """Process request through OpenKit403 authentication"""
         
         # Skip excluded paths
         if request.url.path in self.excluded_paths:
+            return await call_next(request)
+        
+        # Skip OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
             return await call_next(request)
         
         auth_header = request.headers.get('authorization')
@@ -100,7 +130,7 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
                 origin_binding=self.config.origin_binding
             )
             
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
                     "error": "wallet_auth_required",
@@ -108,6 +138,9 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
                 },
                 headers={"WWW-Authenticate": header_value}
             )
+            
+            # ADD CORS HEADERS
+            return self._add_cors_headers(response, request)
         
         # Verify authorization
         result = await verify_authorization(
@@ -138,7 +171,7 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
                 origin_binding=self.config.origin_binding
             )
             
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
                 content={
                     "error": result.error,
@@ -146,6 +179,9 @@ class OpenKit403Middleware(BaseHTTPMiddleware):
                 },
                 headers={"WWW-Authenticate": header_value}
             )
+            
+            # ADD CORS HEADERS
+            return self._add_cors_headers(response, request)
         
         # Success - attach user to request state
         request.state.openkitx403_user = {
@@ -177,7 +213,6 @@ def require_openkitx403_user(request: Request) -> OpenKit403User:
     user_data = getattr(request.state, "openkitx403_user", None)
     
     if not user_data:
-        # This should not happen if middleware is properly configured
         raise RuntimeError("OpenKit403 user not found in request state")
     
     return OpenKit403User(
