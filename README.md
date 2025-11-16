@@ -273,7 +273,7 @@ Inspired by the "HTTP-native + wallet + open" philosophy, OpenKitx403 is built f
 
 - **GitHub**: [https://github.com/openkitx403/openkitx403](https://github.com/openkitx403/openkitx403)
 - **Documentation**: [https://openkitx403.github.io/openkitx403-docs/](https://openkitx403.github.io/openkitx403-docs/)
-- **Twitter**: [https://x.com/openkitx403](https://x.com/openkitx403)
+- **Twitter**: [https://x.com/openkitx403dev](https://x.com/openkitx403dev)
 
 ## 💬 Support
 
@@ -281,5 +281,6 @@ Inspired by the "HTTP-native + wallet + open" philosophy, OpenKitx403 is built f
 - 🐛 Issues: [GitHub Issues](https://github.com/openkitx403/openkitx403/issues)
 
 ---
+
 
 **Built with ❤️ for the Solana ecosystem**
