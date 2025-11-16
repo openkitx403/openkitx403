@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openkitx403"
-version = "0.1.3"
+version = "0.1.5"
 description = "Python server SDK for OpenKitx403 wallet authentication"
 authors = ["OpenKitx403 Contributors"]
 homepage = "https://www.openkitx403.dev"

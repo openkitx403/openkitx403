@@ -25,27 +25,26 @@ HTTP-native wallet authentication for Solana
 ## 📦 Installation
 
 ### TypeScript Client (Browser/Node)
-```bash
 npm install @openkitx403/client
-```
+
 
 ### TypeScript Server (Express/Fastify)
-```bash
 npm install @openkitx403/server
-```
+
+
 
 ### Python Server (FastAPI)
-```bash
 pip install openkitx403
-# or
+
+or
 poetry add openkitx403
-```
+
+
 
 ## 🚀 Quick Start
 
 ### Browser Client
 
-```typescript
 import { OpenKit403Client } from '@openkitx403/client';
 
 const client = new OpenKit403Client();
@@ -54,74 +53,77 @@ const client = new OpenKit403Client();
 await client.connect('phantom');
 
 // Authenticate with API
-const result = await client.authenticate({
-  resource: 'https://api.example.com/protected',
-  method: 'GET'
+const response = await client.authenticate({
+resource: 'https://api.example.com/protected',
+method: 'GET'
 });
 
-if (result.ok) {
-  console.log('✅ Authenticated as:', result.address);
-  const data = await result.response?.json();
+if (response.ok) {
+const data = await response.json();
+console.log('✅ Authenticated as:', client.getAddress());
+console.log('Data:', data);
+} else {
+console.error('❌ Authentication failed:', response.status);
 }
-```
+
+
 
 ### Express Server
 
-```typescript
 import express from 'express';
 import { createOpenKit403, inMemoryLRU } from '@openkitx403/server';
 
 const app = express();
 
 const openkit = createOpenKit403({
-  issuer: 'my-api-v1',
-  audience: 'https://api.example.com',
-  ttlSeconds: 60,
-  bindMethodPath: true,
-  replayStore: inMemoryLRU()
+issuer: 'my-api-v1',
+audience: 'https://api.example.com',
+ttlSeconds: 60,
+bindMethodPath: true,
+replayStore: inMemoryLRU()
 });
 
 app.use(openkit.middleware());
 
 app.get('/protected', (req, res) => {
-  const user = req.openkitx403User;
-  res.json({ message: 'Hello!', wallet: user.address });
+const user = req.openkitx403User;
+res.json({ message: 'Hello!', wallet: user.address });
 });
 
 app.listen(3000);
-```
+
+
 
 ### FastAPI Server
 
-```python
 from fastapi import FastAPI, Depends
 from openkitx403 import OpenKit403Middleware, require_openkitx403_user
 
 app = FastAPI()
 
 app.add_middleware(
-    OpenKit403Middleware,
-    audience="https://api.example.com",
-    issuer="my-api-v1",
-    ttl_seconds=60,
-    bind_method_path=True,
-    replay_backend="memory"
+OpenKit403Middleware,
+audience="https://api.example.com",
+issuer="my-api-v1",
+ttl_seconds=60,
+bind_method_path=True,
+replay_backend="memory"
 )
 
 @app.get("/protected")
-async def protected(user = Depends(require_openkitx403_user)):
-    return {"message": "Hello!", "wallet": user.address}
-```
+async def protected(user=Depends(require_openkitx403_user)):
+return {"message": "Hello!", "wallet": user.address}
+
+
 
 ## 🎯 How It Works
 
-1. **Client** requests a protected resource → **403 Forbidden**
-2. **Server** responds with `WWW-Authenticate: OpenKitx403 ...` header containing a challenge
-3. **Client** asks user's Solana wallet (Phantom/Backpack/Solflare) to sign the challenge
-4. **Client** re-sends request with `Authorization: OpenKitx403 ...` header
+1. **Client** requests a protected resource → **403 Forbidden**  
+2. **Server** responds with `WWW-Authenticate: OpenKitx403 ...` header containing a challenge  
+3. **Client** asks user's Solana wallet (Phantom/Backpack/Solflare) to sign the challenge  
+4. **Client** re-sends request with `Authorization: OpenKitx403 ...` header  
 5. **Server** verifies signature and grants access → **200 OK**
 
-```
 Client                          Server
   |                               |
   |  GET /protected              |
@@ -137,55 +139,55 @@ Client                          Server
   |                               |
   |  200 OK + Data               |
   |<-----------------------------|
-```
+
+
 
 ## 🔒 Security Features
 
-- **Short-lived challenges** (60s default TTL)
-- **Replay protection** via nonce store
-- **Method/path binding** prevents cross-endpoint replay
-- **Origin/User-Agent binding** (optional)
-- **Clock skew tolerance** (±120s default)
-- **Token-gating support** for NFT/SPL token requirements
+- **Short-lived challenges** (60s default TTL)  
+- **Replay protection** via nonce store  
+- **Method/path binding** prevents cross-endpoint replay  
+- **Origin/User-Agent binding** (optional)  
+- **Clock skew tolerance** (±120s default)  
+- **Token-gating support** for NFT/SPL token requirements  
 
 ## 📚 Documentation
 
-- **[Complete Usage Examples](./USAGE_EXAMPLES.md)** - All use cases with code
-- **[Protocol Specification](./docs/spec.md)** - RFC-style spec
-- **[Internals Guide](./docs/internals.md)** - Implementation details
-- **[Security Model](./SECURITY.md)** - Threat model and mitigations
+- **[Complete Usage Examples](./USAGE_EXAMPLES.md)** - All use cases with code  
+- **[Protocol Specification](./docs/spec.md)** - RFC-style spec  
+- **[Internals Guide](./docs/internals.md)** - Implementation details  
+- **[Security Model](./SECURITY.md)** - Threat model and mitigations  
 
 ## 🌐 Wallet Compatibility
 
-| Wallet | Browser | Mobile | Status |
-|--------|---------|--------|--------|
-| Phantom | ✅ | ⚠️ Via WalletConnect | Supported |
-| Backpack | ✅ | ❌ | Supported |
-| Solflare | ✅ | ⚠️ Via WalletConnect | Supported |
+| Wallet   | Browser | Mobile               | Status    |
+|----------|---------|----------------------|-----------|
+| Phantom  | ✅      | ⚠️ Via WalletConnect  | Supported |
+| Backpack | ✅      | ❌                   | Supported |
+| Solflare | ✅      | ⚠️ Via WalletConnect  | Supported |
 
 ## 🤖 AI Agent & LangChain Integration
 
 OpenKitx403 supports autonomous agents and LangChain tools:
 
-```typescript
 import { SolanaWalletAuthTool } from '@openkitx403/langchain';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 
 const tools = [new SolanaWalletAuthTool()];
 const executor = await initializeAgentExecutorWithOptions(tools, model, {
-  agentType: "zero-shot-react-description"
+agentType: "zero-shot-react-description"
 });
 
 const result = await executor.call({
-  input: "Connect my wallet and fetch my NFT collection"
+input: "Connect my wallet and fetch my NFT collection"
 });
-```
+
+
 
 See [USAGE_EXAMPLES.md](./USAGE_EXAMPLES.md#7-langchain-integration) for complete examples.
 
 ## 📊 Package Structure
 
-```
 openkitx403/
 ├── packages/
 │   ├── ts-client/         # Browser & Node.js SDK
@@ -195,60 +197,61 @@ openkitx403/
 ├── docs/                  # Protocol specification
 ├── tests/                 # Test suites
 └── USAGE_EXAMPLES.md      # Complete usage guide
-```
+
+
 
 ## 🧪 Testing
 
-```bash
-# Install dependencies
+Install dependencies
 npm install
 
-# Build all packages
+Build all packages
 npm run build
 
-# Run tests
+Run tests
 npm run test
 npm run test --workspace=packages/ts-client
 npm run test --workspace=packages/ts-server
 
-# Python tests
+Python tests
 cd packages/py-server
 pytest
-```
+
+
 
 ## 🔧 Advanced Features
 
 ### Token Gating
 
-```typescript
 const openkit = createOpenKit403({
-  issuer: 'my-api',
-  audience: 'https://api.example.com',
-  tokenGate: async (address: string) => {
-    // Check if wallet holds required NFT/token
-    const hasToken = await checkTokenHolding(address);
-    return hasToken;
-  }
+issuer: 'my-api',
+audience: 'https://api.example.com',
+tokenGate: async (address: string) => {
+// Check if wallet holds required NFT/token
+const hasToken = await checkTokenHolding(address);
+return hasToken;
+}
 });
-```
+
+
 
 ### Custom Replay Store
 
-```typescript
 class RedisReplayStore implements ReplayStore {
-  async check(key: string, ttl: number): Promise<boolean> {
-    return await redis.exists(key);
-  }
-  
-  async store(key: string, ttl: number): Promise<void> {
-    await redis.setex(key, ttl, '1');
-  }
+async check(key: string, ttl: number): Promise<boolean> {
+return await redis.exists(key);
+}
+
+async store(key: string, ttl: number): Promise<void> {
+await redis.setex(key, ttl, '1');
+}
 }
 
 const openkit = createOpenKit403({
-  replayStore: new RedisReplayStore()
+replayStore: new RedisReplayStore()
 });
-```
+
+
 
 ## 🤝 Contributing
 
@@ -274,7 +277,7 @@ Inspired by the "HTTP-native + wallet + open" philosophy, OpenKitx403 is built f
 
 ## 💬 Support
 
-- 📧 Email: support@openkitx403.dev
+- 📧 Email: [support@openkitx403.dev](mailto:support@openkitx403.dev)
 - 🐛 Issues: [GitHub Issues](https://github.com/openkitx403/openkitx403/issues)
 
 ---

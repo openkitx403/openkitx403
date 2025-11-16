@@ -172,7 +172,11 @@ def parse_authorization_header(header: str) -> Optional[AuthorizationParams]:
 def build_signing_string(challenge: Challenge) -> str:
     """Build canonical signing string"""
     # Sort keys for deterministic JSON
-    payload = json.dumps(challenge.to_dict(), sort_keys=True)
+    payload = json.dumps(
+        challenge.to_dict(), 
+        sort_keys=True,
+        separators=(',', ':')
+    )
     
     lines = [
         'OpenKitx403 Challenge',

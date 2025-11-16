@@ -6,7 +6,7 @@ describe('OpenKit403Client', () => {
 
   beforeEach(() => {
     client = new OpenKit403Client();
-    
+  
     // Mock window.solana for testing
     global.window = {
       solana: {

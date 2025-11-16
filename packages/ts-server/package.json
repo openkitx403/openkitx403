@@ -1,6 +1,6 @@
 {
   "name": "@openkitx403/server",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "TypeScript server SDK for OpenKitx403 wallet authentication",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

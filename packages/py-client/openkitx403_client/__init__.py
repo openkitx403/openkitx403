@@ -7,18 +7,20 @@ from datetime import datetime
 from typing import Dict, Optional, Any
 from urllib.parse import urlparse
 
-
 import requests
 import base58
 from solders.keypair import Keypair
-from nacl.signing import SigningKey
-
 
 
 class OpenKit403ClientError(Exception):
     """Base exception for OpenKit403 client errors"""
     pass
 
+
+def base64url_encode(data: bytes) -> str:
+    """Encode to base64url (no padding)"""
+    b64 = base64.urlsafe_b64encode(data).decode('ascii')
+    return b64.rstrip('=')
 
 
 class OpenKit403Client:
@@ -32,7 +34,7 @@ class OpenKit403Client:
         from solders.keypair import Keypair
         from openkitx403_client import OpenKit403Client
         
-        keypair = Keypair.generate()
+        keypair = Keypair()
         client = OpenKit403Client(keypair)
         
         response = client.authenticate('https://api.example.com/protected')
@@ -154,18 +156,21 @@ class OpenKit403Client:
         # Build signing string
         signing_string = self._build_signing_string(challenge)
         
-        # Sign with keypair
+        # Sign with keypair (using built-in method)
         message = signing_string.encode('utf-8')
-        signing_key = SigningKey(bytes(self.keypair.secret()))
-        signed = signing_key.sign(message)
+        signature = self.keypair.sign_message(message)
         
         # Return base58-encoded signature
-        return base58.b58encode(signed.signature).decode('ascii')
+        return base58.b58encode(bytes(signature)).decode('ascii')
     
     def _build_signing_string(self, challenge: Dict[str, Any]) -> str:
         """Build canonical signing string from challenge"""
-        # Sort challenge keys for deterministic JSON
-        payload = json.dumps(challenge, sort_keys=True)
+        # Sort challenge keys for deterministic JSON (no whitespace)
+        payload = json.dumps(
+            challenge, 
+            sort_keys=True,
+            separators=(',', ':')
+        )
         
         lines = [
             'OpenKitx403 Challenge',
@@ -207,7 +212,7 @@ class OpenKit403Client:
     @staticmethod
     def _generate_nonce() -> str:
         """Generate cryptographically random nonce"""
-        return base58.b58encode(secrets.token_bytes(16)).decode('ascii')
+        return base64url_encode(secrets.token_bytes(16))
     
     @staticmethod
     def _base64url_decode(s: str) -> str:
@@ -218,7 +223,6 @@ class OpenKit403Client:
         
         decoded = base64.urlsafe_b64decode(s_padded)
         return decoded.decode('utf-8')
-
 
 
 def create_client(keypair: Keypair) -> OpenKit403Client:
@@ -234,9 +238,9 @@ def create_client(keypair: Keypair) -> OpenKit403Client:
     return OpenKit403Client(keypair)
 
 
-
 __all__ = [
     'OpenKit403Client',
     'OpenKit403ClientError',
-    'create_client'
+    'create_client',
+    'base64url_encode'
 ]

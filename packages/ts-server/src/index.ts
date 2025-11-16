@@ -194,7 +194,7 @@ export function createChallenge(
   
   const challenge: Challenge = {
     v: 1,
-    alg: 'ed25519',
+    alg: 'ed25519-solana',
     nonce: generateNonce(),
     ts: getCurrentTimestamp(),
     aud: config.audience,
@@ -237,7 +237,7 @@ export async function verifyAuthorization(
     return { ok: false, error: 'Unsupported protocol version' };
   }
 
-  if (challenge.alg !== 'ed25519') {
+  if (challenge.alg !== 'ed25519-solana') {
     return { ok: false, error: 'Unsupported algorithm' };
   }
 
@@ -306,7 +306,7 @@ export async function verifyAuthorization(
     await config.replayStore.store(replayKey, config.ttlSeconds || 60);
   }
 
-  // ✅ FIXED: Proper Ed25519 verification
+  // Proper Ed25519 verification
   try {
     const publicKey = new PublicKey(params.addr);
     const signature = bs58.decode(params.sig);

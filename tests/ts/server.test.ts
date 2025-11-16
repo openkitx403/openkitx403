@@ -4,7 +4,7 @@ import {
   verifyAuthorization,
   createOpenKit403,
   InMemoryReplayStore,
-  utils
+  utils,
 } from '../packages/ts-server/src/index';
 
 describe('createChallenge', () => {
@@ -13,7 +13,7 @@ describe('createChallenge', () => {
     audience: 'https://api.example.com',
     ttlSeconds: 60,
     bindMethodPath: true,
-    originBinding: true
+    originBinding: true,
   };
 
   it('should create a valid challenge', () => {
@@ -63,7 +63,7 @@ describe('InMemoryReplayStore', () => {
 
   it('should store and check nonces', async () => {
     const key = 'test-nonce-1';
-    
+
     // Initially should not exist
     expect(await store.check(key, 60)).toBe(false);
 
@@ -76,20 +76,19 @@ describe('InMemoryReplayStore', () => {
 
   it('should expire old nonces', async () => {
     const key = 'test-nonce-2';
-    
+
     // Store with 0 TTL (immediately expired)
     await store.store(key, 0);
 
     // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should be expired
     expect(await store.check(key, 0)).toBe(false);
   });
 
   it('should handle LRU eviction', async () => {
-    // Note: This test would need to fill the store beyond maxSize
-    // For now, just verify it doesn't crash
+    // Note: This test fills the store up to 100 keys, checking no crashes
     for (let i = 0; i < 100; i++) {
       await store.store(`nonce-${i}`, 60);
     }
@@ -122,8 +121,9 @@ describe('utils', () => {
 
   describe('parseAuthorizationHeader', () => {
     it('should parse valid header', () => {
-      const header = 'OpenKitx403 addr="5Gv8...", sig="3kYz...", challenge="eyJ2...", ts="2025-11-05T10:30:00Z", nonce="X8p2..."';
-      
+      const header =
+        'OpenKitx403 addr="5Gv8...", sig="3kYz...", challenge="eyJ2...", ts="2025-11-05T10:30:00Z", nonce="X8p2..."';
+
       const params = utils.parseAuthorizationHeader(header);
 
       expect(params).toBeTruthy();
@@ -136,7 +136,7 @@ describe('utils', () => {
 
     it('should return null for invalid header', () => {
       const header = 'Bearer token123';
-      
+
       const params = utils.parseAuthorizationHeader(header);
 
       expect(params).toBeNull();
@@ -144,7 +144,7 @@ describe('utils', () => {
 
     it('should return null if missing required fields', () => {
       const header = 'OpenKitx403 addr="5Gv8..."';
-      
+
       const params = utils.parseAuthorizationHeader(header);
 
       expect(params).toBeNull();
@@ -165,7 +165,7 @@ describe('utils', () => {
         originBind: true,
         serverId: 'test-server',
         exp: '2025-11-05T10:31:00Z',
-        ext: {}
+        ext: {},
       };
 
       const signingString = utils.buildSigningString(challenge);
@@ -186,7 +186,7 @@ describe('createOpenKit403', () => {
     const openkit = createOpenKit403({
       issuer: 'my-api',
       audience: 'https://api.example.com',
-      ttlSeconds: 60
+      ttlSeconds: 60,
     });
 
     expect(openkit.createChallenge).toBeDefined();
@@ -199,7 +199,7 @@ describe('createOpenKit403', () => {
     const openkit = createOpenKit403({
       issuer: 'my-api',
       audience: 'https://api.example.com',
-      ttlSeconds: 120
+      ttlSeconds: 120,
     });
 
     const { challengeJson } = openkit.createChallenge('GET', '/test');
@@ -214,16 +214,11 @@ describe('verifyAuthorization', () => {
     issuer: 'test-server',
     audience: 'https://api.example.com',
     ttlSeconds: 60,
-    clockSkewSeconds: 120
+    clockSkewSeconds: 120,
   };
 
   it('should reject invalid authorization header format', async () => {
-    const result = await verifyAuthorization(
-      'Bearer token123',
-      'GET',
-      '/protected',
-      config
-    );
+    const result = await verifyAuthorization('Bearer token123', 'GET', '/protected', config);
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Invalid authorization header');
@@ -243,18 +238,13 @@ describe('verifyAuthorization', () => {
       originBind: false,
       serverId: 'test-server',
       exp: '2020-01-01T00:01:00Z',
-      ext: {}
+      ext: {},
     };
 
     const challengeB64 = utils.base64urlEncode(JSON.stringify(challenge));
     const authHeader = `OpenKitx403 addr="test", sig="test", challenge="${challengeB64}", ts="2025-11-05T10:30:00Z", nonce="test"`;
 
-    const result = await verifyAuthorization(
-      authHeader,
-      'GET',
-      '/protected',
-      config
-    );
+    const result = await verifyAuthorization(authHeader, 'GET', '/protected', config);
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain('expired');
@@ -273,18 +263,13 @@ describe('verifyAuthorization', () => {
       originBind: false,
       serverId: 'test-server',
       exp: new Date(Date.now() + 60000).toISOString(),
-      ext: {}
+      ext: {},
     };
 
     const challengeB64 = utils.base64urlEncode(JSON.stringify(challenge));
     const authHeader = `OpenKitx403 addr="test", sig="test", challenge="${challengeB64}", ts="${new Date().toISOString()}", nonce="test"`;
 
-    const result = await verifyAuthorization(
-      authHeader,
-      'GET',
-      '/protected',
-      config
-    );
+    const result = await verifyAuthorization(authHeader, 'GET', '/protected', config);
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain('audience');

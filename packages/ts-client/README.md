@@ -24,16 +24,18 @@ const client = new OpenKit403Client();
 await client.connect('phantom');
 
 // 2️⃣ Authenticate with your protected API
-const result = await client.authenticate({
+const response = await client.authenticate({
   resource: 'https://api.example.com/protected',
   method: 'GET',
 });
 
-if (result.ok) {
-  console.log('✅ Authenticated as:', result.address);
-  console.log('Response:', await result.response?.json());
+if (response.ok) {
+  const data = await response.json();
+  console.log('✅ Authenticated');
+  console.log('Wallet:', client.getAddress());
+  console.log('Response:', data);
 } else {
-  console.error('❌ Authentication failed:', result.error);
+  console.error('❌ Authentication failed:', response.status);
 }
 ```
 
@@ -48,51 +50,37 @@ import { OpenKit403Client } from '@openkitx403/client';
 export default function App() {
   const [client] = useState(() => new OpenKit403Client());
   const [address, setAddress] = useState<string | null>(null);
+  const [data, setData] = useState<any>(null);
 
   const handleLogin = async () => {
-    await client.connect('phantom');
-    const result = await client.authenticate({
-      resource: 'https://api.example.com/user/profile',
-    });
+    try {
+      await client.connect('phantom');
+      const response = await client.authenticate({
+        resource: 'https://api.example.com/user/profile',
+      });
 
-    if (result.ok) setAddress(result.address!);
-  };
-
-  return (
-    <div>
-      <h1>OpenKitx403 Client Demo</h1>
-      {address ? (
-        <p>✅ Connected as: {address}</p>
-      ) : (
-        <button onClick={handleLogin}>Connect Wallet</button>
-      )}
-    </div>
-  );
+      if (response.ok) {
+        setAddress(client.getAddress());
+        setData(await response.json());
+      }
+    } catch (error) {
+      console.error('Authentication failed:', error);
+    }
+  }
 }
 ```
 
 ---
 
-## 🧠 Node.js Example (Keypair)
+## 🔍 Detect Available Wallets
+```tsx
+import { detectWallets } from '@openkitx403/client';
 
-```typescript
-import { OpenKit403Client } from '@openkitx403/client';
-import { Keypair } from '@solana/web3.js';
-import bs58 from 'bs58';
-
-// Load keypair from Base58 secret
-const keypair = Keypair.fromSecretKey(bs58.decode('YOUR_SECRET_KEY_BASE58'));
-const client = new OpenKit403Client({ keypair });
-
-const result = await client.authenticate({
-  resource: 'https://api.example.com/protected',
-  method: 'GET',
-});
-
-if (result.ok) {
-  console.log('✅ Authenticated as:', result.address);
-}
+const wallets = await detectWallets();
+console.log('Available wallets:', wallets);
+// ['phantom', 'backpack']
 ```
+
 
 ---
 
@@ -102,64 +90,209 @@ if (result.ok) {
 
 Creates a new OpenKitx403 client instance.
 
-| Option     | Type      | Description                                     |
-| ---------- | --------- | ----------------------------------------------- |
-| `keypair?` | `Keypair` | (Node.js only) Use a Solana keypair for signing |
-| `wallet?`  | `string`  | Wallet provider name (e.g. `"phantom"`)         |
-| `debug?`   | `boolean` | Enable debug logging                            |
+**Options:**
+
+| Option    | Type             | Description                         |
+|-----------|------------------|-------------------------------------|
+| `wallet?` | `WalletProvider` | Default wallet provider to use      |
+
+**Example:**`
+```tsx
+const client = new OpenKit403Client({ wallet: 'phantom' });
+```
+
 
 ---
 
-### `client.connect(wallet: WalletType)`
+### `client.connect(wallet: WalletProvider)`
 
 Connects to the specified wallet provider.
-Supported wallets: `"phantom"`, `"backpack"`, `"solflare"`.
+
+**Parameters:**
+- `wallet`: `'phantom' | 'backpack' | 'solflare'`
+
+**Returns:** `Promise<void>`
+
+**Throws:** Error if wallet not found or connection fails
 
 ---
 
 ### `client.authenticate(options)`
 
-Signs and sends an authenticated request.
+Signs and sends an authenticated request to a protected API.
+
+**Parameters:**
 
 | Option     | Type                     | Description                       |
-| ---------- | ------------------------ | --------------------------------- |
-| `resource` | `string`                 | Target API endpoint               |
-| `method?`  | `string`                 | HTTP method (`GET`, `POST`, etc.) |
+|------------|--------------------------|-----------------------------------|
+| `resource` | `string`                 | Target API endpoint (full URL)    |
+| `method?`  | `string`                 | HTTP method (default: `'GET'`)    |
 | `headers?` | `Record<string, string>` | Additional headers                |
-| `body?`    | `object`                 | JSON payload (for POST/PUT)       |
+| `body?`    | `any`                    | JSON payload (for POST/PUT)       |
+| `wallet?`  | `WalletProvider`         | Auto-connect to wallet if needed  |
 
-**Returns:**
+**Returns:** `Promise<Response>`
 
-```typescript
-{
-  ok: boolean;
-  address?: string;
-  error?: string;
-  response?: Response;
+Returns standard Fetch API `Response` object.
+
+**Example:**
+```tsx
+const client = new OpenKit403Client({ wallet: 'phantom' });
+```
+---
+
+### `client.connect(wallet: WalletProvider)`
+
+Connects to the specified wallet provider.
+
+**Parameters:**
+- `wallet`: `'phantom' | 'backpack' | 'solflare'`
+
+**Returns:** `Promise<void>`
+
+**Throws:** Error if wallet not found or connection fails
+
+---
+
+### `client.authenticate(options)`
+
+Signs and sends an authenticated request to a protected API.
+
+**Parameters:**
+
+| Option     | Type                     | Description                       |
+|------------|--------------------------|-----------------------------------|
+| `resource` | `string`                 | Target API endpoint (full URL)    |
+| `method?`  | `string`                 | HTTP method (default: `'GET'`)    |
+| `headers?` | `Record<string, string>` | Additional headers                |
+| `body?`    | `any`                    | JSON payload (for POST/PUT)       |
+| `wallet?`  | `WalletProvider`         | Auto-connect to wallet if needed  |
+
+**Returns:** `Promise<Response>`
+
+Returns standard Fetch API `Response` object.
+
+**Example:**
+```tsx
+const response = await client.authenticate({
+  resource: 'https://api.example.com/data',
+  method: 'POST',
+  body: { message: 'Hello' }
+});
+
+if (response.ok) {
+  const result = await response.json();
+  console.log(result);
 }
 ```
+
+
+---
+
+### `client.getAddress()`
+
+Returns the currently connected wallet address.
+
+**Returns:** `string` (base58-encoded public key)
+
+---
+
+### `client.disconnect()`
+
+Disconnects the current wallet.
+
+**Returns:** `void`
+
+---
+
+### `detectWallets()`
+
+Detects available wallet providers in the browser.
+
+**Returns:** `Promise<WalletProvider[]>`
+
+---
+
+## 📝 POST Request Example
+```tsx
+const client = new OpenKit403Client();
+await client.connect('phantom');
+
+const response = await client.authenticate({
+  resource: 'https://api.example.com/submit',
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: {
+  message: 'Hello from OpenKitx403'
+  }
+});
+
+const data = await response.json();
+console.log('Server response:', data);
+```
+---
+
+## 🔄 Auto-Connect Example
+
+If wallet isn't connected, you can pass wallet provider to `authenticate()`:
+```tsx
+const client = new OpenKit403Client();
+
+// No need to call connect() first
+const response = await client.authenticate({
+  resource: 'https://api.example.com/protected',
+  wallet: 'phantom' // Auto-connects if not already connected
+});
+```
+---
+
+## ⚠️ Error Handling
+```tsx
+const client = new OpenKit403Client();
+
+try {
+  await client.connect('phantom');
+
+  const response = await client.authenticate({
+  resource: 'https://api.example.com/protected' 
+  });
+
+  if (!response.ok) {
+    console.error('Server error:', response.status);
+  }
+} catch (error) {
+  if (error.message.includes('wallet not found')) {
+    console.error('Please install Phantom wallet');
+  } else {
+    console.error('Authentication failed:', error);
+  }
+}
+
 
 ---
 
 ## 📚 Documentation
 
-* [**Usage Examples**](../../USAGE_EXAMPLES.md) — Full production scenarios
-* [**Quick Start Guide**](../../QUICK_START.md) — 5-minute setup
-* [**Security Guide**](../../SECURITY.md) — Binding, replay, and TTL best practices
+* [OpenKitx403 Protocol Specification](https://github.com/openkitx403/openkitx403)
+* [Server SDK Documentation](https://github.com/openkitx403/openkitx403/tree/main/packages/server)
+* [Security Best Practices](https://github.com/openkitx403/openkitx403/blob/main/SECURITY.md)
 
 ---
 
 ## 🛡️ Best Practices
 
 * Always use **HTTPS** in production
-* Use `method` + `path` binding for stronger request integrity
-* Keep challenge TTL short (`60s` recommended)
-* For backends, pair with `@openkitx403/server` middleware
+* Handle wallet connection errors gracefully
+* Use `response.ok` to check authentication success
+* Keep challenge TTL short on server (60s recommended)
+* For backend APIs, pair with `@openkitx403/server` middleware
 
 ---
 
 ## 🪪 License
 
-[MIT](../../LICENSE)
+[MIT](https://github.com/openkitx403/openkitx403/blob/main/LICENSE)
 
----
+
