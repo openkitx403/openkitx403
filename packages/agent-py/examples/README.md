@@ -5,11 +5,13 @@ Production-ready examples demonstrating different use cases for the Python agent
 ## Installation
 
 Install base package
+```
 pip install openkitx403-agent
-
+```
 Install with LangChain support
+```
 pip install openkitx403-agent[langchain]
-
+```
 
 
 ## Examples
@@ -17,10 +19,9 @@ pip install openkitx403-agent[langchain]
 ### 1. Standalone Agent (`standalone_example.py`)
 
 Basic usage without AI framework dependencies.
-
+```
 python standalone_example.py
-
-
+```
 
 **Features:**
 - Basic wallet connection
@@ -33,14 +34,16 @@ python standalone_example.py
 Complete LangChain integration with AI agents.
 
 **Prerequisites:**
+```
 export OPENAI_API_KEY=your-key-here
 pip install openkitx403-agent[langchain]
-
+```
 
 
 **Run:**
+```
 python langchain_example.py
-
+```
 
 
 **Features:**
@@ -50,14 +53,14 @@ python langchain_example.py
 - Multiple wallet support
 
 ## Environment Variables
-
+```
 Required for LangChain examples
 export OPENAI_API_KEY=sk-...
 
 Optional configurations
 export AGENT_TIMEOUT=30
 export AGENT_RETRIES=3
-
+```
 
 
 ## Use Cases Covered
@@ -92,4 +95,5 @@ export AGENT_RETRIES=3
 
 For issues or questions:
 - GitHub: https://github.com/openkitx403/openkitx403/issues
+
 - Email: support@openkitx403.dev
