@@ -98,8 +98,8 @@ In case of a security incident:
 
 - Security Email: [security@openkitx403.dev](mailto:security@openkitx403.dev)  
 - PGP Key: [To be added]  
-- Discord: [https://discord.gg/openkitx403](https://discord.gg/openkitx403)  
 
 ---
 
 **Last Updated**: 2025-11-16
+
