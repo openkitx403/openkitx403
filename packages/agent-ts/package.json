@@ -1,0 +1,35 @@
+{
+  "name": "@openkitx403/agent",
+  "version": "1.0.0",
+  "description": "AI Agent toolkit for OpenKitx403 wallet authentication",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["solana", "wallet", "authentication", "ai", "agent", "langchain"],
+  "author": "OpenKitx403",
+  "license": "MIT",
+  "dependencies": {
+    "@openkitx403/client": "^0.1.4",
+    "zod": "^3.22.4"
+  },
+  "peerDependencies": {
+    "langchain": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "langchain": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "langchain": "^0.1.0",
+    "@langchain/core": "^0.1.0",
+    "@langchain/openai": "^0.0.14"
+  }
+}
